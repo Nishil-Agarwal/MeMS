@@ -5,7 +5,9 @@
 #define PAGE_SIZE 4096
 
 struct node {
-    int data;
+    int begin;
+    int size;
+    struct node* lower_linklist_reference_ptr;
     struct node* next;
     struct node* prev;
 };
@@ -19,9 +21,7 @@ void* userrequest(int requested_size){
 }
 
 void insertnewnode(struct node** head, int data, int usersize){
-   
     struct node* current = (struct node*)userrequest(usersize);
-    current -> data = data;
     current->next = NULL;
 
     if (*head == NULL) {
@@ -49,7 +49,7 @@ void printnodes(struct node* head){
     struct node* temp;
     temp = head;
     while (temp != NULL) {
-        printf("Data = %d\n", temp->data);
+        //printf("Data = %d\n", temp->data);
         temp = temp->next;
     }
 }
@@ -57,8 +57,4 @@ void printnodes(struct node* head){
 
 int main(){
     struct node* head = NULL;
-    insertnewnode(&head,1, 100);
-    insertnewnode(&head,2, 100);
-    insertnewnode(&head,3, 100);
-    printnodes(head);
 }
