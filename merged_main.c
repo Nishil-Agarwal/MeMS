@@ -34,35 +34,28 @@ int traversal_allocate_process(int sizerequired){
     struct lownode* lowtraversal;
     struct node* uppertraversal;
     uppertraversal=header_list_space;
-    do{ 
-        size_t struct_sizeupper = sizeof(struct myStructupper);
-        uppertraversal -> lower_linklist_reference_ptr =  mmap(NULL,struct_sizeupper , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        uppertraversal -> virtual_add_starting_point_for_this_row += sizerequired;
-        uppertraversal -> mmaped_page_size = allocatespace(sizerequired);
-        if (uppertraversal ->  mmaped_physical_address + sizerequired > uppertraversal -> mmaped_page_size) {
-            insert_uppernode(int sizerequired);
-        } else {
-            uppertraversal -> mmaped_physical_address += sizerequired; 
-            lowtraversal -> virtual_address = uppertraversal -> lower_linklist_reference_ptr:
-        }
-       // munmap(ptr, usersize);
-
-        lowtraversal=uppertraversal->lower_linklist_reference_ptr;
+    if (header_list_space!=NULL){
+        int flag=0;
         do{ 
-           
-            size_t struct_sizelower = sizeof(struct myStructlower);
-            lowtraversal -> memory_allocated_ptr = mmap(NULL, sizerequired , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-            lowtraversal -> size = usersize;
-            lowtraversal -> status = 0;  // it's a process 
-            lowtraversal = lowtraversal -> next;
-        }while(lowtraversal->next!=NULL);
+            lowtraversal=uppertraversal->lower_linklist_reference_ptr;
+        // munmap(ptr, usersize);
+            do{ 
+                size_t struct_sizelower = sizeof(struct lownode*);
+                lowtraversal -> size = sizerequired;
+                lowtraversal -> status = 0;  // it's a process 
 
-        previous_upper_list_node = uppertraversal;
-        uppertraversal=uppertraversal->next;
-        uppertraversal -> prev = previous_upper_list_node;
-
-
-    }while(uppertraversal->next!=NULL);
+                lowtraversal = lowtraversal -> next;
+            }while(lowtraversal->next!=NULL);
+            uppertraversal=uppertraversal->next;
+        }while(uppertraversal->next!=NULL);
+        if (flag==0){
+            return -1;
+        }else{
+            return 1;
+        }
+    }else{
+        return -1;
+    }
 }
 
 void insert_uppernode(int sizerequired){
