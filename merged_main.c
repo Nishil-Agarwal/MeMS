@@ -41,10 +41,23 @@ int traversal_allocate_process(int sizerequired){
         // munmap(ptr, usersize);
             do{ 
                 size_t struct_sizelower = sizeof(struct lownode*);
-                lowtraversal -> size = sizerequired;
-                lowtraversal -> status = 0;  // it's a process 
+                if (lowtraversal -> status == 1 && lowtraversal-> size > sizerequired ){
+                    temp = lowtraversal;
+                    totsize = lowtraversal -> size ;
+                    curmemlocation = lowtraversal -> memory_allocated_ptr;
+                    curvirtualaddress = lowtraversal -> virtual_address;
+                    lowtraversal = create_lowernode(curmemlocation, curvirtualaddress ,0, sizerequired);
 
-                lowtraversal = lowtraversal -> next;
+                    lowtraversal -> next = temp;
+                    lowtraversal = lowtraversal -> next;
+                    lowtraversal -> virtual_address += sizerequired;
+                    lowtraversal -> size = totsize - sizerequired;
+                    lowtraversal -> status = 1;
+                }
+
+                else{
+                    lowtraversal = lowtraversal -> next;
+                    }
             }while(lowtraversal->next!=NULL);
             uppertraversal=uppertraversal->next;
         }while(uppertraversal->next!=NULL);
@@ -58,21 +71,22 @@ int traversal_allocate_process(int sizerequired){
     }
 }
 
-struct lownode* create_lowernode(void* mem_alloc_ptr,int virtual_address,int stats,int sizereq){
+struct lownode* create_lowernode(void* mem_alloc_ptr,int vir_add, int stats,int sizereq){
     if (current+sizeof(struct lownode*)>current_structure_page_ptr+PAGE_SIZE){
         struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         current=newpage;
         current_structure_page_ptr=newpage;
     }
 
-    ((struct lownode*)current)->memory_allocated_ptr=mem_alloc_ptr;
+    ((struct lownode*)current)->memory_allocated_ptr= mem_alloc_ptr;
     ((struct lownode*)current)->prev=NULL;
     ((struct lownode*)current)->next=NULL;
     ((struct lownode*)current)->status=stats;
     ((struct lownode*)current)->size=sizereq;
-    ((struct lownode*)current)->virtual_address=previous_upper_list_node->next->virtual_add_starting_point_for_this_row;
+    ((struct lownode*)current)->virtual_address=vir_add;
     current+=sizeof(struct lownode*);
 }
+
 
 void insert_uppernode(int sizerequired){
     void* alloted_address;
