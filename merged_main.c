@@ -34,12 +34,34 @@ int traversal_allocate_process(int sizerequired){
     struct lownode* lowtraversal;
     struct node* uppertraversal;
     uppertraversal=header_list_space;
-    do{
-        lowtraversal=uppertraversal->lower_linklist_reference_ptr;
-        do{
+    do{ 
+        size_t struct_sizeupper = sizeof(struct myStructupper);
+        uppertraversal -> lower_linklist_reference_ptr =  mmap(NULL,struct_sizeupper , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        uppertraversal -> virtual_add_starting_point_for_this_row += sizerequired;
+        uppertraversal -> mmaped_page_size = allocatespace(sizerequired);
+        if (uppertraversal ->  mmaped_physical_address + sizerequired > uppertraversal -> mmaped_page_size) {
+            insert_uppernode(int sizerequired);
+        } else {
+            uppertraversal -> mmaped_physical_address += sizerequired; 
+            lowtraversal -> virtual_address = uppertraversal -> lower_linklist_reference_ptr:
+        }
+       // munmap(ptr, usersize);
 
+        lowtraversal=uppertraversal->lower_linklist_reference_ptr;
+        do{ 
+           
+            size_t struct_sizelower = sizeof(struct myStructlower);
+            lowtraversal -> memory_allocated_ptr = mmap(NULL, sizerequired , PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            lowtraversal -> size = usersize;
+            lowtraversal -> status = 0;  // it's a process 
+            lowtraversal = lowtraversal -> next;
         }while(lowtraversal->next!=NULL);
+
+        previous_upper_list_node = uppertraversal;
         uppertraversal=uppertraversal->next;
+        uppertraversal -> prev = previous_upper_list_node;
+
+
     }while(uppertraversal->next!=NULL);
 }
 
