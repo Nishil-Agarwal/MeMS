@@ -58,6 +58,22 @@ int traversal_allocate_process(int sizerequired){
     }
 }
 
+struct lownode* create_lowernode(void* mem_alloc_ptr,int virtual_address,int stats,int sizereq){
+    if (current+sizeof(struct lownode*)>current_structure_page_ptr+PAGE_SIZE){
+        struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        current=newpage;
+        current_structure_page_ptr=newpage;
+    }
+
+    ((struct lownode*)current)->memory_allocated_ptr=mem_alloc_ptr;
+    ((struct lownode*)current)->prev=NULL;
+    ((struct lownode*)current)->next=NULL;
+    ((struct lownode*)current)->status=stats;
+    ((struct lownode*)current)->size=sizereq;
+    ((struct lownode*)current)->virtual_address=previous_upper_list_node->next->virtual_add_starting_point_for_this_row;
+    current+=sizeof(struct lownode*);
+}
+
 void insert_uppernode(int sizerequired){
     void* alloted_address;
     int pages;
