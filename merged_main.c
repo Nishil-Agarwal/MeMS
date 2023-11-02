@@ -42,12 +42,12 @@ int traversal_allocate_process(int sizerequired){
             do{ 
                 size_t struct_sizelower = sizeof(struct lownode*);
                 if (lowtraversal -> status == 1 && lowtraversal-> size > sizerequired ){
-                    totsize = lowtraversal -> size ;
-                    curmemlocation = lowtraversal -> memory_allocated_ptr;
-                    curvirtualaddress = lowtraversal -> virtual_address;
-                    struct lownode* temp = create_lowernode(curmemlocation+size, curvirtualaddress+size ,1, totsize-sizerequired);
+                    size_t totsize = lowtraversal -> size ;
+                    void* curmemlocation = lowtraversal -> memory_allocated_ptr;
+                    int curvirtualaddress = lowtraversal -> virtual_address;
+                    struct lownode* temp = create_lowernode(curmemlocation+sizerequired, curvirtualaddress+sizerequired,1,totsize-sizerequired);
 
-                    nextelement = lowtraversal->next;
+                    struct lownode* nextelement = lowtraversal->next;
                     lowtraversal -> next = temp;
                     temp->next = nextelement;
                     temp->prev = lowtraversal;
