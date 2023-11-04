@@ -25,7 +25,7 @@ struct lownode {
 struct node* header_list_space;
 void* current_structure_page_ptr;
 void* current;
-struct node* previous_upper_list_node=NULL;
+struct node* latest_upper_list_node;
 
 
 void* allocatespace(int requested_size){
@@ -37,7 +37,7 @@ void* allocatespace(int requested_size){
 
 
 struct lownode* create_lowernode(void* mem_alloc_ptr,int vir_add, int stats,size_t sizereq){
-    if (current+sizeof(struct lownode*)>current_structure_page_ptr+PAGE_SIZE){
+    if (current+sizeof(struct lownode)>current_structure_page_ptr+PAGE_SIZE){
         struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         current=newpage;
         current_structure_page_ptr=newpage;
@@ -49,14 +49,16 @@ struct lownode* create_lowernode(void* mem_alloc_ptr,int vir_add, int stats,size
     ((struct lownode*)current)->status=stats;
     ((struct lownode*)current)->size=sizereq;
     ((struct lownode*)current)->virtual_address=vir_add;
-    current+=sizeof(struct lownode*);
+    struct lownode* return_value=((struct lownode*)current);
+    current+=sizeof(struct lownode);
+    return return_value;
 }
 
 
 void* insert_uppernode(size_t sizerequired){
     void* alloted_address;
     int pages;
-    if (current+sizeof(struct node*)>current_structure_page_ptr+PAGE_SIZE){
+    if (current+sizeof(struct node)>current_structure_page_ptr+PAGE_SIZE){
         struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         current=newpage;
         current_structure_page_ptr=newpage;
@@ -65,40 +67,42 @@ void* insert_uppernode(size_t sizerequired){
     ((struct node*)current)->next=NULL;
     if (current == header_list_space){
         ((struct node*)current)->prev=NULL;
+        ((struct node*)current)->next=NULL;
         ((struct node*)current)->virtual_add_starting_point_for_this_row=0;
     }else{
-        ((struct node*)current)->prev=previous_upper_list_node;
-        previous_upper_list_node->next=(struct node*)current;
-        ((struct node*)current)->virtual_add_starting_point_for_this_row=(previous_upper_list_node->virtual_add_starting_point_for_this_row)+1;
+        ((struct node*)current)->prev=latest_upper_list_node;
+        latest_upper_list_node->next=(struct node*)current;
+        ((struct node*)current)->virtual_add_starting_point_for_this_row=(latest_upper_list_node->virtual_add_starting_point_for_this_row+latest_upper_list_node->mmaped_page_size);
     }
 
     alloted_address=allocatespace((sizerequired/PAGE_SIZE+1)*PAGE_SIZE);
     ((struct node*)current)->mmaped_physical_address=alloted_address;
     pages=(sizerequired/PAGE_SIZE+1);
     ((struct node*)current)->mmaped_page_size=pages*PAGE_SIZE;
-    if (previous_upper_list_node!=NULL){
-        previous_upper_list_node=previous_upper_list_node->next;
+    ((struct node*)current)->lower_linklist_reference_ptr=current+sizeof(struct node);
+    if (latest_upper_list_node!=NULL){
+        latest_upper_list_node=latest_upper_list_node->next;
     }else{
-        previous_upper_list_node=(struct node*)current;
+        latest_upper_list_node=header_list_space;
     }
-    current+=sizeof(struct node*);
+    current+=sizeof(struct node);
 
-    if (current+sizeof(struct lownode*)>current_structure_page_ptr+PAGE_SIZE){
+    if (current+sizeof(struct lownode)>current_structure_page_ptr+PAGE_SIZE){
         struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         current=newpage;
         current_structure_page_ptr=newpage;
     }
-
+    
     ((struct lownode*)current)->memory_allocated_ptr=alloted_address;
     ((struct lownode*)current)->prev=NULL;
     ((struct lownode*)current)->next=NULL;
     ((struct lownode*)current)->status=0;
     ((struct lownode*)current)->size=sizerequired;
-    ((struct lownode*)current)->virtual_address=previous_upper_list_node->next->virtual_add_starting_point_for_this_row;
+    ((struct lownode*)current)->virtual_address=latest_upper_list_node->virtual_add_starting_point_for_this_row;
     void* prev_node_temp=current;
-    current+=sizeof(struct lownode*);
-
-    if (current+sizeof(struct lownode*)>current_structure_page_ptr+PAGE_SIZE){
+    current+=sizeof(struct lownode);
+    
+    if (current+sizeof(struct lownode)>current_structure_page_ptr+PAGE_SIZE){
         struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         current=newpage;
         current_structure_page_ptr=newpage;
@@ -108,10 +112,11 @@ void* insert_uppernode(size_t sizerequired){
         ((struct lownode*)current)->memory_allocated_ptr=alloted_address+sizerequired;
         ((struct lownode*)current)->prev=((struct lownode*)(prev_node_temp));
         ((struct lownode*)current)->next=NULL;
+        ((struct lownode*)prev_node_temp)->next=((struct lownode*)current);
         ((struct lownode*)current)->status=1;
         ((struct lownode*)current)->size=pages*PAGE_SIZE-sizerequired;
         ((struct lownode*)current)->virtual_address=((struct lownode*)prev_node_temp)->virtual_address+((struct lownode*)prev_node_temp)->size;
-        current+sizeof(struct lownode*);
+        current+=sizeof(struct lownode);
     }
     return alloted_address;
 }
@@ -124,8 +129,6 @@ int traversal_allocate_process(size_t sizerequired){
     struct node* uppertraversal;
     uppertraversal=header_list_space;
     if (header_list_space!=NULL){
-        int flag=0;
-        size_t struct_sizelower = sizeof(struct lownode*);
         do{ 
             lowtraversal=uppertraversal->lower_linklist_reference_ptr;
         // munmap(ptr, usersize);
@@ -140,25 +143,47 @@ int traversal_allocate_process(size_t sizerequired){
                     lowtraversal -> next = temp;
                     temp->next = nextelement;
                     temp->prev = lowtraversal;
-                    nextelement->prev=temp;
+                    if (nextelement!=NULL){
+                        nextelement->prev=temp;
+                    }
                     lowtraversal -> status = 0;
                     lowtraversal->size = sizerequired;
+                    return 1;
+                }else if (lowtraversal -> status == 1 && lowtraversal-> size == sizerequired ){
+                    lowtraversal->status = 0;
+                    lowtraversal = lowtraversal -> next;
+                    return 1;
                 }
-
                 else{
                     lowtraversal = lowtraversal -> next;
-                    }
-            }while(lowtraversal->next!=NULL);
+                }
+            }while(lowtraversal!=NULL);
             uppertraversal=uppertraversal->next;
-        }while(uppertraversal->next!=NULL);
-        if (flag==0){
-            return -1;
-        }else{
-            return 1;
-        }
-    }else{
-        return -1;
+        }while(uppertraversal!=NULL);
     }
+    return -1;
+}
+
+void mems_print_stats(){
+    struct lownode* lowtraversal;
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    do{ 
+        if (uppertraversal!=NULL){
+            lowtraversal=uppertraversal->lower_linklist_reference_ptr;
+            printf("MAIN[%d:%d]-> ",(int)(uppertraversal->virtual_add_starting_point_for_this_row),(int)(uppertraversal->virtual_add_starting_point_for_this_row+uppertraversal->mmaped_page_size)-1);
+            do{
+                if (lowtraversal->status==0){
+                    printf("P[%d:%d] <-> ",(int)(lowtraversal->virtual_address),(int)(lowtraversal->virtual_address+lowtraversal->size)-1);
+                }else{
+                    printf("H[%d:%d] <-> ",(int)(lowtraversal->virtual_address),(int)(lowtraversal->virtual_address+lowtraversal->size)-1);
+                }
+                lowtraversal = lowtraversal -> next;
+            }while(lowtraversal!=NULL);
+            printf("NULL\n");
+            uppertraversal=uppertraversal->next;
+        }
+    }while(uppertraversal!=NULL);
 }
 
 
@@ -166,14 +191,25 @@ void mems_init(){
     header_list_space = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     current = header_list_space;
     current_structure_page_ptr= header_list_space;
+    latest_upper_list_node=NULL;
 }
 
 
 void* mems_malloc(size_t size){
-
+    int result = traversal_allocate_process(size);
+    if (result==-1){
+        insert_uppernode(size);
+    }
 }
 
 
 int main(){
     mems_init();
+    insert_uppernode(50);
+
+    mems_malloc(3000);
+    mems_malloc(1000);
+    mems_malloc(46);
+    mems_malloc(100);
+    mems_print_stats();
 }
