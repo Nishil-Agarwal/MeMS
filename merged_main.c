@@ -186,6 +186,78 @@ void mems_print_stats(){
     }while(uppertraversal!=NULL);
 }
 
+void* mems_get(int ptr){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    void* paddress=NULL;
+    while(uppertraversal!=NULL){
+        if((uppertraversal->next)->virtual_add_starting_point_for_this_row>ptr){
+            int difference=ptr-uppertraversal->virtual_add_starting_point_for_this_row;
+            paddress=uppertraversal->mmaped_physical_address+difference;
+        }
+    }
+    return paddress;
+}
+
+void mems_free(int ptr){
+    struct lownode* lowtraversal;
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    
+    while(uppertraversal!=NULL){
+            lowtraversal=uppertraversal->lower_linklist_reference_ptr;
+        while(lowtraversal!=NULL){
+            if(lowtraversal->virtual_address==ptr){
+                lowtraversal->status=1;
+                if(lowtraversal->prev->status==1 && lowtraversal->next->status==1){
+                    struct lownode* b=lowtraversal->prev;
+                    struct lownode* c=lowtraversal->next->next;
+                    b->size=b->size+lowtraversal->size+lowtraversal->next->size;
+                    lowtraversal->next->next=NULL;
+                    lowtraversal->next->prev=NULL;
+                    munmap(lowtraversal->next,sizeof(struct lownode))
+                    lowtraversal->next=NULL;
+                    lowtraversal->prev=NULL;
+                    munmap(lowtraversal,sizeof(struct lownode))
+                    b->next=c;
+                    c->prev=b;
+                }else if(lowtraversal->prev->status==1){
+                    struct lownode* b=lowtraversal->prev;
+                    struct lownode* c=lowtraversal->next;
+                    b->size=b->size+lowtraversal->size;
+                    lowtraversal->next=NULL;
+                    lowtraversal->prev=NULL;
+                    munmap(lowtraversal,sizeof(struct lownode))
+                    b->next=c;
+                    c->prev=b;
+                }else if(lowtraversal->next->status==1){
+                    struct lownode* c=lowtraversal->next->next;
+                    lowtraversal->size=lowtraversal->next->size+lowtraversal->size;
+                    lowtraversal->next->next=NULL;
+                    lowtraversal->next->prev=NULL;
+                    munmap(lowtraversal->next,sizeof(struct lownode))
+                    lowtraversal->next=c;
+                    c->prev=lowtraversal;
+                }
+            }
+            lowtraversal = lowtraversal -> next;
+        }
+    }
+}
+
+void mems_finish(){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    struct node* next_node_ptr=header_list_space->next;
+    while(uppertraversal!=NULL){
+        munmap(uppertraversal->mmaped_physical_address,uppertraversal->mmaped_page_size)
+    }
+    while(header_list_space!=NULL){
+        munmap(header_list_space,sizeof(struct node));
+        header_list_space->next;
+        next_node_ptr->next;
+    }
+}
 
 void mems_init(){
     header_list_space = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
