@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 #define PAGE_SIZE 4096
 
@@ -17,7 +18,7 @@ struct lownode {
     void* memory_allocated_ptr;    //ptr to mem location where allocated size
     struct lownode* next;
     struct lownode* prev;
-    int virtual_address;
+    int virtual_address;///////////////////////////////////////////////void*
     int status;       //1 = hole, 0 = occupied
     size_t size;         //Node allocated size
 };
@@ -118,7 +119,7 @@ void* insert_uppernode(size_t sizerequired){
         ((struct lownode*)current)->virtual_address=((struct lownode*)prev_node_temp)->virtual_address+((struct lownode*)prev_node_temp)->size;
         current+=sizeof(struct lownode);
     }
-    return alloted_address;
+    return ((struct lownode*)prev_node_temp)->virtual_address;
 }
 
 
@@ -128,7 +129,7 @@ int traversal_allocate_process(size_t sizerequired){
     struct lownode* lowtraversal;
     struct node* uppertraversal;
     uppertraversal=header_list_space;
-    if (header_list_space!=NULL){
+    if (header_list_space!=current){
         do{ 
             lowtraversal=uppertraversal->lower_linklist_reference_ptr;
         // munmap(ptr, usersize);
@@ -148,11 +149,10 @@ int traversal_allocate_process(size_t sizerequired){
                     }
                     lowtraversal -> status = 0;
                     lowtraversal->size = sizerequired;
-                    return 1;
+                    return lowtraversal->virtual_address;
                 }else if (lowtraversal -> status == 1 && lowtraversal-> size == sizerequired ){
                     lowtraversal->status = 0;
-                    lowtraversal = lowtraversal -> next;
-                    return 1;
+                    return lowtraversal->virtual_address;
                 }
                 else{
                     lowtraversal = lowtraversal -> next;
@@ -163,6 +163,129 @@ int traversal_allocate_process(size_t sizerequired){
     }
     return -1;
 }
+
+
+void* mems_get(int ptr){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    void* paddress=NULL;
+    while(uppertraversal!=NULL){
+        if((uppertraversal->next)->virtual_add_starting_point_for_this_row>ptr){
+            int difference=ptr-uppertraversal->virtual_add_starting_point_for_this_row;
+            paddress=uppertraversal->mmaped_physical_address+difference;
+        }
+    }
+    return paddress;
+}
+
+void mems_free(int ptr){
+    struct lownode* lowtraversal;
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+
+    while(uppertraversal!=NULL){
+            lowtraversal=uppertraversal->lower_linklist_reference_ptr;
+        while(lowtraversal!=NULL){
+            if(lowtraversal->virtual_address==ptr){
+                lowtraversal->status=1;
+                if(lowtraversal->prev!=NULL && lowtraversal->prev->status==1 && lowtraversal->next!=NULL && lowtraversal->next->status==1){
+                    struct lownode* b=lowtraversal->prev;
+                    struct lownode* c=lowtraversal->next->next;
+                    b->size=b->size+lowtraversal->size+lowtraversal->next->size;
+                    lowtraversal->next->next=NULL;
+                    lowtraversal->next->prev=NULL;
+                    lowtraversal->next=NULL;
+                    lowtraversal->prev=NULL;
+                    b->next=c;
+                    if (c!=NULL){
+                        c->prev=b;
+                    }
+                }else if(lowtraversal->prev!=NULL && lowtraversal->prev->status==1){
+                    struct lownode* b=lowtraversal->prev;
+                    struct lownode* c=lowtraversal->next;
+                    b->size=b->size+lowtraversal->size;
+                    lowtraversal->next=NULL;
+                    lowtraversal->prev=NULL;
+                    b->next=c;
+                    if (c!=NULL){
+                        c->prev=b;
+                    }
+                }else if(lowtraversal->next!=NULL && lowtraversal->next->status==1){
+                    struct lownode* c=lowtraversal->next->next;
+                    lowtraversal->size=lowtraversal->next->size+lowtraversal->size;
+                    lowtraversal->next->next=NULL;
+                    lowtraversal->next->prev=NULL;
+                    lowtraversal->next=c;
+                    if (c!=NULL){
+                        c->prev=lowtraversal;
+                    }
+                }
+            }
+            lowtraversal = lowtraversal -> next;
+        }
+        uppertraversal=uppertraversal->next;
+    }
+}
+
+void pages_used(){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    long int count=0;
+    while(uppertraversal!=NULL){
+        count+=(uppertraversal->mmaped_page_size)/PAGE_SIZE;
+        uppertraversal=uppertraversal->next;
+    }
+    printf("Pages used:   %ld\n",count);
+}
+
+void upper_list_nodes(){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    long int count=0;
+    while(uppertraversal!=NULL){
+        count+=1;
+        uppertraversal=uppertraversal->next;
+    }
+    printf("Main chain length:   %ld\n",count);
+}
+
+void space_unused(){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    struct lownode* lowertraversal;
+    long int count=0;
+    while(uppertraversal!=NULL){
+        lowertraversal=uppertraversal->lower_linklist_reference_ptr;
+        while(lowertraversal!=NULL){
+            if(lowertraversal->status==1){
+                count+=lowertraversal->size;
+            }
+            lowertraversal=lowertraversal->next;
+        }
+        uppertraversal=uppertraversal->next;
+    }
+    printf("Space unused:   %ld\n",count);
+}
+
+void sub_chain_length(){
+    struct node* uppertraversal;
+    uppertraversal=header_list_space;
+    struct lownode* lowertraversal;
+    long int count;
+    printf("Sub chain length array:   [");
+    while(uppertraversal!=NULL){
+        count=0;
+        lowertraversal=uppertraversal->lower_linklist_reference_ptr;
+        while(lowertraversal!=NULL){
+            count+=1;
+            lowertraversal=lowertraversal->next;
+        }
+        printf("%d, ",count);
+        uppertraversal=uppertraversal->next;
+    }
+    printf("]\n");
+}
+
 
 void mems_print_stats(){
     struct lownode* lowtraversal;
@@ -184,79 +307,22 @@ void mems_print_stats(){
             uppertraversal=uppertraversal->next;
         }
     }while(uppertraversal!=NULL);
+    pages_used();
+    space_unused();
+    upper_list_nodes();
+    sub_chain_length();
 }
 
-void* mems_get(int ptr){
-    struct node* uppertraversal;
-    uppertraversal=header_list_space;
-    void* paddress=NULL;
-    while(uppertraversal!=NULL){
-        if((uppertraversal->next)->virtual_add_starting_point_for_this_row>ptr){
-            int difference=ptr-uppertraversal->virtual_add_starting_point_for_this_row;
-            paddress=uppertraversal->mmaped_physical_address+difference;
-        }
-    }
-    return paddress;
-}
-
-void mems_free(int ptr){
-    struct lownode* lowtraversal;
-    struct node* uppertraversal;
-    uppertraversal=header_list_space;
-    
-    while(uppertraversal!=NULL){
-            lowtraversal=uppertraversal->lower_linklist_reference_ptr;
-        while(lowtraversal!=NULL){
-            if(lowtraversal->virtual_address==ptr){
-                lowtraversal->status=1;
-                if(lowtraversal->prev->status==1 && lowtraversal->next->status==1){
-                    struct lownode* b=lowtraversal->prev;
-                    struct lownode* c=lowtraversal->next->next;
-                    b->size=b->size+lowtraversal->size+lowtraversal->next->size;
-                    lowtraversal->next->next=NULL;
-                    lowtraversal->next->prev=NULL;
-                    munmap(lowtraversal->next,sizeof(struct lownode));
-                    lowtraversal->next=NULL;
-                    lowtraversal->prev=NULL;
-                    munmap(lowtraversal,sizeof(struct lownode));
-                    b->next=c;
-                    c->prev=b;
-                }else if(lowtraversal->prev->status==1){
-                    struct lownode* b=lowtraversal->prev;
-                    struct lownode* c=lowtraversal->next;
-                    b->size=b->size+lowtraversal->size;
-                    lowtraversal->next=NULL;
-                    lowtraversal->prev=NULL;
-                    munmap(lowtraversal,sizeof(struct lownode));
-                    b->next=c;
-                    c->prev=b;
-                }else if(lowtraversal->next->status==1){
-                    struct lownode* c=lowtraversal->next->next;
-                    lowtraversal->size=lowtraversal->next->size+lowtraversal->size;
-                    lowtraversal->next->next=NULL;
-                    lowtraversal->next->prev=NULL;
-                    munmap(lowtraversal->next,sizeof(struct lownode));
-                    lowtraversal->next=c;
-                    c->prev=lowtraversal;
-                }
-            }
-            lowtraversal = lowtraversal -> next;
-        }
-    }
-}
 
 void mems_finish(){
     struct node* uppertraversal;
     uppertraversal=header_list_space;
-    struct node* next_node_ptr=header_list_space->next;
     while(uppertraversal!=NULL){
         munmap(uppertraversal->mmaped_physical_address,uppertraversal->mmaped_page_size);
+        uppertraversal=uppertraversal->next;
     }
-    while(header_list_space!=NULL){
-        munmap(header_list_space,sizeof(struct node));
-        header_list_space->next;
-        next_node_ptr->next;
-    }
+
+    munmap(header_list_space,PAGE_SIZE);
 }
 
 void mems_init(){
@@ -268,20 +334,23 @@ void mems_init(){
 
 
 void* mems_malloc(size_t size){
-    int result = traversal_allocate_process(size);
+    void* result = traversal_allocate_process(size);
     if (result==-1){
-        insert_uppernode(size);
+        result = insert_uppernode(size);
     }
+    return result;
 }
 
 
 int main(){
     mems_init();
-    insert_uppernode(50);
-
-    mems_malloc(3000);
-    mems_malloc(1000);
-    mems_malloc(46);
-    mems_malloc(100);
+    void* a=mems_malloc(50);
+    void* b=mems_malloc(3000);
+    void* c=mems_malloc(1000);
+    mems_free(c);
+    void* d=mems_malloc(1040);
+    void* e=mems_malloc(6);
+    void* f=mems_malloc(200);
     mems_print_stats();
+    mems_finish();
 }
