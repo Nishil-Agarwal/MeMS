@@ -192,9 +192,11 @@ void* mems_get(void* ptr){
         if((uppertraversal->next)->virtual_add_starting_point_for_this_row>ptr){
             long int difference=((long int)ptr)-((long int)(uppertraversal->virtual_add_starting_point_for_this_row));
             paddress=(void*)(((long int)(uppertraversal->mmaped_physical_address))+((long int)difference));
+            return paddress;
         }
+        uppertraversal=uppertraversal->next;
     }
-    return paddress;
+    return (void*)(-1);
 }
 
 void mems_free(void* ptr){
@@ -310,6 +312,7 @@ void mems_print_stats(){
     struct lownode* lowtraversal;
     struct node* uppertraversal;
     uppertraversal=header_list_space;
+    printf("----------MeMS SYSTEM STATS----------\n");
     do{ 
         if (uppertraversal!=NULL){
             lowtraversal=uppertraversal->lower_linklist_reference_ptr;
@@ -330,6 +333,7 @@ void mems_print_stats(){
     space_unused();
     upper_list_nodes();
     sub_chain_length();
+    printf("-------------------------------------\n");
 }
 
 
@@ -375,15 +379,15 @@ void* mems_malloc(size_t size){
 }
 
 
-int main(){
-    mems_init();
-    void* a=mems_malloc(50);
-    void* b=mems_malloc(3000);
-    void* c=mems_malloc(1000);
-    mems_free(c);
-    void* d=mems_malloc(1040);
-    void* e=mems_malloc(6);
-    void* f=mems_malloc(200);
-    mems_print_stats();
-    mems_finish();
-}
+// int main(){
+//     mems_init();
+//     void* a=mems_malloc(50);
+//     void* b=mems_malloc(3000);
+//     void* c=mems_malloc(1000);
+//     mems_free(c);
+//     void* d=mems_malloc(1040);
+//     void* e=mems_malloc(6);
+//     void* f=mems_malloc(200);
+//     mems_print_stats();
+//     mems_finish();
+// }
