@@ -1,6 +1,6 @@
 all :
-	gcc -o Q Q.c
-	./Q
+	gcc -o example example.c
+	./example
 
 clean : 
-	rm Q
+	rm example
