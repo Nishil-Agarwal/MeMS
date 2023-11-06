@@ -43,7 +43,7 @@ void* allocatespace(size_t requested_size){
 
 struct lownode* create_lowernode(void* mem_alloc_ptr,void* vir_add, int stats,size_t sizereq){
     if (current+sizeof(struct lownode)>current_structure_page_ptr+PAGE_SIZE){
-        struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        struct node* newpage=(struct node*)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         if (newpage==MAP_FAILED){
             perror("mmap error");
             exit(2);
@@ -68,7 +68,7 @@ void* insert_uppernode(size_t sizerequired){
     void* alloted_address;
     int pages;
     if (current+sizeof(struct node)>current_structure_page_ptr+PAGE_SIZE){
-        struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        struct node* newpage=(struct node*)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         if (newpage==MAP_FAILED){
             perror("mmap error");
             exit(2);
@@ -92,7 +92,7 @@ void* insert_uppernode(size_t sizerequired){
     ((struct node*)current)->mmaped_physical_address=alloted_address;
     pages=(sizerequired/PAGE_SIZE+1);
     ((struct node*)current)->mmaped_page_size=pages*PAGE_SIZE;
-    ((struct node*)current)->lower_linklist_reference_ptr=current+sizeof(struct node);
+    ((struct node*)current)->lower_linklist_reference_ptr=(struct lownode*)(current+sizeof(struct node));
     if (latest_upper_list_node!=NULL){
         latest_upper_list_node=latest_upper_list_node->next;
     }else{
@@ -101,7 +101,7 @@ void* insert_uppernode(size_t sizerequired){
     current+=sizeof(struct node);
 
     if (current+sizeof(struct lownode)>current_structure_page_ptr+PAGE_SIZE){
-        struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        struct node* newpage=(struct node*)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         if (newpage==MAP_FAILED){
             perror("mmap error");
             exit(2);
@@ -120,7 +120,7 @@ void* insert_uppernode(size_t sizerequired){
     current+=sizeof(struct lownode);
     
     if (current+sizeof(struct lownode)>current_structure_page_ptr+PAGE_SIZE){
-        struct node* newpage=mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+        struct node* newpage=(struct node*)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
         if (newpage==MAP_FAILED){
             perror("mmap error");
             exit(2);
@@ -359,7 +359,7 @@ void mems_finish(){
 }
 
 void mems_init(){
-    header_list_space = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    header_list_space = (struct node*)mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (header_list_space==MAP_FAILED){
         perror("mmap error");
         exit(2);
