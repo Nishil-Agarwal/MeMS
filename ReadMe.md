@@ -1,4 +1,4 @@
-For this assignment we have used a 2D  doubly linked list.
+For the MeMS we have used a 2D  doubly linked list.
     In the upper list we are storing the main nodes which contain pointers to lower level lists.
 The upper list also contains the mmaped physical address.
     The lower linked list nodes contain pointers to specific physical memory locations and their virtual 
