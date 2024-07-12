@@ -1,0 +1,53 @@
+We have created the following 3 files:
+    Q2MAIN : The program that acts as the shell
+    Q2DIR : External file for handling dir command
+    Q2DATE : External file for handling date command
+
+Q2MAIN :
+    Functions : 
+        segmentation : Breaks string recieved as input to words for processing.
+        command_check,check_fname,check_option : Functions that check their portion of string in command for errors.
+        error_check : Master function for all type of error checks.
+        error_message_printer : Function to print error as per the type of error (self defined) recieved.
+        
+        word : This acts as our internal word command. We call it for executing any word command.
+        word_count_calc : Function which assists word function by reading data from file and counting words, one sentence at a time.
+        counting_words : Function which assists word_count_calc by counting words in each sentence. Takes care of -n option.
+
+        exec_command : Our command runner. No matter which type of command, its execution after all error checks is done by this.
+
+    Methodology Used : 
+        1) First take input from user using gets(), split it into words using segmentation.
+        2) Apply error checks on splitted string for any issues.
+        3) Begin execution of command using exec_command function.
+        4) Exec command executes either of the 3 types of command by suitable code. Takes care of options given in itself only.
+            word: Calls internal word() function with required arguments to count words in given file.
+            dir:  Forks a new process for external command dir(). Uses execvp() to send command string to Q2DIR program. Waits 
+                  till it completes its function before proceeding. The Q2DIR creates a temp file storing the cwd() to which shell 
+                  should change directory to. After child process terminates required directory changes take place and temp file is deleted.
+            date: Forks a new process for external command sate().  Uses execvp() to send command string to Q2DATE program. 
+                  Waits before continuing onwards.
+        5) This cycle is repeated until user exits.
+
+Q2DIR : 
+    Functions :
+        recur_remove_directory : Removes all files and folders inside directory recursively and then removes the directory itself.
+                                 This is called in case directory exists and -r is specified.
+        directory_change_write : Creates temporary .txt file storing new directory path for main shell to change to.
+
+    Methodology Used : 
+        1) First the command string is fetched and checked for options specified. We proceed accordingly.
+        2) mkdir() command is used to try and make directory. It already exists appropriate action is taken.
+        3) In case -r command is specified and directory exists, recur_remove_directory() is called to remove old one.
+        4) In case -v command is specified, after completion of removal/creation/path change, a text is displayed using if, printf commands.
+
+Q2DATE : 
+    We have assumed user won't write : date -d "last week" file.txt
+    And will instead write : date -d "lastweek" file.txt
+
+    Functions :
+        newvalue : Returns the offset value in seconds based on STRING entered if -d enabled.
+    Methodology Used : 
+        1) First the command string is fetched and last modified details for file specified are fetched.
+        2) Now the details are converted to human readable string form.
+        3) As per options specified, this last modified details string is modified and printed.
