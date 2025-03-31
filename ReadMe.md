@@ -18,6 +18,7 @@ This is true even for the 2D list structure page.
 
 
 General Working of code:
+
 1)Memory demand is made.
 
 2)We check through traversing all lower level nodes if one large enough to satisfy requirement exists.
